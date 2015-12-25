@@ -17,7 +17,17 @@
 
 extern int force_fast_charge;
 
-#define FAST_CHARGE_DISABLED 0	/* default */
-#define FAST_CHARGE_FORCE_AC 1
+#define FAST_CHARGE_DISABLED		0	/* default */
+#define FAST_CHARGE_FORCE_AC		1
+#define FAST_CHARGE_FORCE_CUSTOM_MA	2
+
+#define FAST_CHARGE_700		700
+#define FAST_CHARGE_1000	1000
+#define FAST_CHARGE_1400	1400
+#define FAST_CHARGE_1800	1800
+#define FAST_CHARGE_2100	2100
+#define FAST_CHARGE_2200	2200
+
+#define FAST_CHARGE_LEVELS	"700 1000 1400 1800 2100 2200"
 
 #endif

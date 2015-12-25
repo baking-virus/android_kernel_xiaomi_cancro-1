@@ -26,6 +26,7 @@
 #include <linux/fastchg.h>
 
 int force_fast_charge;
+int fast_charge_level = FAST_CHARGE_1800;
 
 /* sysfs interface for "force_fast_charge" */
 static ssize_t force_fast_charge_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
@@ -45,7 +46,28 @@ if (new_force_fast_charge >= FAST_CHARGE_DISABLED && new_force_fast_charge <= FA
 	force_fast_charge = new_force_fast_charge;
 }
 
-return count;
+static ssize_t charge_level_store(struct kobject *kobj,
+			struct kobj_attribute *attr, const char *buf,
+			size_t count)
+{
+
+	int new_charge_level;
+
+	sscanf(buf, "%du", &new_charge_level);
+
+	switch (new_charge_level) {
+		case FAST_CHARGE_700:
+		case FAST_CHARGE_1000:
+		case FAST_CHARGE_1400:
+		case FAST_CHARGE_1800:
+		case FAST_CHARGE_2100:
+		case FAST_CHARGE_2200:
+			fast_charge_level = new_charge_level;
+			return count;
+		default:
+			return -EINVAL;
+	}
+	return -EINVAL;
 }
 
 static struct kobj_attribute force_fast_charge_attribute =

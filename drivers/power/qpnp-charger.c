@@ -930,6 +930,17 @@ qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 	}
 
 	/* Impose input current limit */
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	if (force_fast_charge >= 1)
+		mA = fast_charge_level;
+		if (mA > FAST_CHARGE_1000)
+			mA = FAST_CHARGE_1000;
+	else {
+		if (chip->maxinput_usb_ma)
+			mA = (chip->maxinput_usb_ma) <=
+				mA ? chip->maxinput_usb_ma : mA;
+	}
+#else
 	if (chip->maxinput_usb_ma)
 		mA = (chip->maxinput_usb_ma) <= mA ? chip->maxinput_usb_ma : mA;
 
@@ -4166,6 +4177,17 @@ qpnp_chg_reduce_power_stage(struct qpnp_chg_chip *chip)
 	bool usb_ma_above_wall =
 		(qpnp_chg_usb_iusbmax_get(chip) > USB_WALL_THRESHOLD_MA);
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	if (force_fast_charge >= 1) {
+		if (fast_charge_level <= FAST_CHARGE_1000)
+			usb_ma_above_wall = false;
+		else
+			usb_ma_above_wall = true;
+	} else {
+		usb_ma_above_wall =
+			(qpnp_chg_usb_iusbmax_get(chip) > USB_WALL_THRESHOLD_MA);
+	}
+#endif
 	if (fast_chg
 		&& usb_present
 		&& usb_ma_above_wall
