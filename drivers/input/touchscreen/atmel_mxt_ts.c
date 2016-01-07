@@ -624,6 +624,8 @@ struct mxt_data {
 	u8 userdata_info[MXT_USERDATA_SIZE];
 	bool firmware_updated;
 	bool keys_off;
+	bool hw_wakeup;
+	bool screen_off;
 
 	/* Slowscan parameters	*/
 	int slowscan_enabled;
@@ -2142,6 +2144,13 @@ static int mxt_read_internal_gpio(struct mxt_data *data)
 
 	ret = mxt_write_object(data, MXT_SPT_GPIOPWM_T19,
 			MXT_GPIOPWM_INTPULLUP, 0xFF);
+	if (ret) {
+		dev_err(dev, "Failed to enable internal pull-up resistor!\n");
+		return ret;
+	}
+
+	ret = mxt_write_object(data, MXT_SPT_GPIOPWM_T19,
+			MXT_GPIOPWM_CTRL, MXT_GPIO_FORCERPT);
 	if (ret) {
 		dev_err(dev, "Failed to enable internal pull-up resistor!\n");
 		return ret;
@@ -4851,9 +4860,11 @@ static int fb_notifier_cb(struct notifier_block *self,
 		blank = evdata->data;
 		if (*blank == FB_BLANK_UNBLANK) {
 			dev_info(&mxt_data->client->dev, "##### UNBLANK SCREEN #####\n");
+			mxt_data->screen_off = false;
 			mxt_input_enable(mxt_data->input_dev);
 		} else if (*blank == FB_BLANK_POWERDOWN) {
 			dev_info(&mxt_data->client->dev, "##### BLANK SCREEN #####\n");
+			mxt_data->screen_off = true;
 			mxt_input_disable(mxt_data->input_dev);
 		}
 	}
@@ -5296,7 +5307,7 @@ static int mxt_parse_dt(struct device *dev, struct mxt_platform_data *pdata)
 		ret = of_property_read_u32(temp, "atmel,wake-up-self-adcx", &temp_val);
 		if (ret) {
 			dev_err(dev, "Unable to read wake-up-self-adcx\n");
-			return ret;
+			info->wake_up_self_adcx = 0;
 		} else
 			info->wake_up_self_adcx = (u8)temp_val;
 
@@ -5323,8 +5334,6 @@ static int __devinit mxt_probe(struct i2c_client *client,
 	int error;
 	struct gpiomux_setting old_rst_setting, old_int_setting;
 
-	if (get_hw_version_major() < 4)
-		return -ENODEV;
 
 	if (client->dev.of_node) {
 		pdata = devm_kzalloc(&client->dev,
@@ -5490,6 +5499,9 @@ retry:
 		goto err_free_input_device;
 	}
 	data->irq_enabled = true;
+	data->screen_off = false;
+
+	device_init_wakeup(&client->dev, 1);
 
 	device_init_wakeup(&client->dev, 1);
 
@@ -5643,6 +5655,7 @@ static const struct dev_pm_ops mxt_touchscreen_pm_ops = {
 static const struct i2c_device_id mxt_id[] = {
 	{ "qt602240_ts", 0 },
 	{ "atmel_mxt_ts_640t", 0 },
+	{ "atmel_mxt_ts", 0},
 	{ "mXT224", 0 },
 	{ }
 };
@@ -5651,7 +5664,8 @@ MODULE_DEVICE_TABLE(i2c, mxt_id);
 #ifdef CONFIG_OF
 static struct of_device_id mxt_match_table[] = {
 	{ .compatible = "atmel,mxt-ts-640t",},
-	{ },
+	{ .compatible = "atmel,mxt-ts", },
+	{}
 };
 #else
 #define mxt_match_table NULL
